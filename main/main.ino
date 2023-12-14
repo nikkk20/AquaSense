@@ -1,15 +1,11 @@
 #include <Arduino.h>
-#if defined(ESP32)
-  #include <WiFi.h>
-#elif defined(ESP8266)
-  #include <ESP8266WiFi.h>
-#endif
+#include <WiFi.h>
 #include <Firebase_ESP_Client.h>
 #include "addons/TokenHelper.h"
 #include "addons/RTDBHelper.h"
-
 #include <OneWire.h>
 #include <DallasTemperature.h>
+
 
 //Functions
 String water_level();
@@ -17,6 +13,7 @@ String water_temperature();
 String turbidity_level();
 String ph_level();
 String pir();
+void sendtoFirebase(String path,String data);
 
 //Pins
 
@@ -29,8 +26,7 @@ const int pirpin = 24;
 
 //vaiables
 
-String waterLevel;
-float maxDepth=30.0;
+float maxDepth=12.0;
 float distance = 0.0; 
 String percentage = "";
 float volt=0.0;
@@ -41,20 +37,26 @@ String temp= "";
 String turbidity= "";
 String phvalue= "";
 String piroutput="";
-
-//temperature
 OneWire oneWire(oneWireBus);
 DallasTemperature sensors(&oneWire);
 
 
+//Firebase paths
+String dbName = "asDb/";
+String waterlevelPath = dbName + "waterLevel";
+String turbidityPath = dbName + "turbidityLevel";
+String temperaturePath = dbName + "temperature";
+String pirPath = dbName + "pirStatus";
+String phPath = dbName + "phValue";
+
+//Wifi credentials
 #define WIFI_SSID "harshiiss"
 #define WIFI_PASSWORD "12345678"
 
 // Insert Firebase project API Key
-#define API_KEY "AIzaSyBDG2HMuP-1XYQ8lV1LLQJUTHRZytSvUY4"
+#define API_KEY "AIzaSyDimxt4inJYjOmgn87bbmBUKwafur4gw6Q"
 
-
-#define DATABASE_URL "test2-89c2d-default-rtdb.firebaseio.com/" 
+#define URL "aquasense-6f3a7-default-rtdb.asia-southeast1.firebasedatabase.app/" 
 
 
 FirebaseData fbdo;
@@ -62,8 +64,6 @@ FirebaseData fbdo;
 FirebaseAuth auth;
 FirebaseConfig config;
 
-unsigned long sendDataPrevMillis = 0;
-int count = random(0,50);
 bool signupOK = false;
 
 void setup(){
@@ -89,7 +89,7 @@ void setup(){
   config.api_key = API_KEY;
 
 
-  config.database_url = DATABASE_URL;
+  config.database_url = URL;
 
 
   if (Firebase.signUp(&config, &auth, "", "")){
@@ -108,34 +108,27 @@ void setup(){
 }
 
 void loop(){
-  if (Firebase.ready() && signupOK /*&& (millis() - sendDataPrevMillis > 15000 || sendDataPrevMillis == 0)*/){
-    sendDataPrevMillis = millis();
-    count = random(0,50);
-    if (Firebase.RTDB.setString(&fbdo, "test/int", water_level())){
-      Serial.print("Sent: ");
-      Serial.println(count);
-    }
-    else {
-      Serial.println("FAILED");
-      Serial.println("REASON: " + fbdo.errorReason());
-    }
-    delay(3300);
-    
-    // Write an Float number on the database path test/float
-//    if (Firebase.RTDB.setFloat(&fbdo, "test/float", 0.01 + random(0,100))){
-//      Serial.println("PASSED");
-//      Serial.println("PATH: " + fbdo.dataPath());
-//      Serial.println("TYPE: " + fbdo.dataType());
-//    }
-//    else {
-//      Serial.println("FAILED");
-//      Serial.println("REASON: " + fbdo.errorReason());
-//    }
-  }
+  sendtoFirebase(waterlevelPath,water_level());
+  sendtoFirebase(temperaturePath,water_temperature());
+  sendtoFirebase(phPath,ph_level());
+  sendtoFirebase(turbidityPath,turbidity_level());
+  sendtoFirebase(pirPath,pir());
+
 }
 
 
-
+//Function for firebase data sending
+void sendtoFirebase(String path,String data){
+  if (Firebase.ready() && signupOK ){
+      if (Firebase.RTDB.setString(&fbdo, path, data)){
+        Serial.println("Sent: " + path);
+      }
+      else {
+        Serial.println("FAILED");
+        Serial.println("REASON: " + fbdo.errorReason());
+      }
+      delay(3300);
+}}
 //function for waterlevel
 String water_level(){
   digitalWrite(trigPin,LOW);
