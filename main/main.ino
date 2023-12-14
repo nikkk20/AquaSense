@@ -42,7 +42,7 @@ DallasTemperature sensors(&oneWire);
 
 
 //Firebase paths
-String dbName = "asDb/";
+String dbName = "test/";
 String waterlevelPath = dbName + "waterLevel";
 String turbidityPath = dbName + "turbidityLevel";
 String temperaturePath = dbName + "temperature";
@@ -110,9 +110,9 @@ void setup(){
 void loop(){
   sendtoFirebase(waterlevelPath,water_level());
   sendtoFirebase(temperaturePath,water_temperature());
-  sendtoFirebase(phPath,ph_level());
-  sendtoFirebase(turbidityPath,turbidity_level());
-  sendtoFirebase(pirPath,pir());
+//  sendtoFirebase(phPath,ph_level());
+//  sendtoFirebase(turbidityPath,turbidity_level());
+//  sendtoFirebase(pirPath,pir());
 
 }
 
@@ -121,7 +121,7 @@ void loop(){
 void sendtoFirebase(String path,String data){
   if (Firebase.ready() && signupOK ){
       if (Firebase.RTDB.setString(&fbdo, path, data)){
-        Serial.println("Sent: " + path);
+        Serial.println("Sent: " + data);
       }
       else {
         Serial.println("FAILED");
